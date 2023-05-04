@@ -1,3 +1,6 @@
 [submodule "GLAT"]
 	path = GLAT
 	url = https://github.com/FLC777/GLAT.git
+[submodule "g-transformer"]
+	path = g-transformer
+	url = https://github.com/baoguangsheng/g-transformer
