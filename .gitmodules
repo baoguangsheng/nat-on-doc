@@ -1,12 +1,6 @@
 [submodule "GLAT"]
 	path = GLAT
 	url = https://github.com/FLC777/GLAT.git
-[submodule "g-transformer"]
-	path = g-transformer
-	url = https://github.com/baoguangsheng/g-transformer
-[submodule "good-translation-wrong-in-context"]
-	path = good-translation-wrong-in-context
-	url = https://github.com/lena-voita/good-translation-wrong-in-context/
 [submodule "G-Trans"]
 	path = G-Trans
 	url = https://github.com/baoguangsheng/g-transformer
