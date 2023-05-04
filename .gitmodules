@@ -1,0 +1,3 @@
+[submodule "GLAT"]
+	path = GLAT
+	url = https://github.com/FLC777/GLAT.git
