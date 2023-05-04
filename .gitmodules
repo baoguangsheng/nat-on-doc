@@ -7,3 +7,9 @@
 [submodule "good-translation-wrong-in-context"]
 	path = good-translation-wrong-in-context
 	url = https://github.com/lena-voita/good-translation-wrong-in-context/
+[submodule "G-Trans"]
+	path = G-Trans
+	url = https://github.com/baoguangsheng/g-transformer
+[submodule "CADec"]
+	path = CADec
+	url = https://github.com/lena-voita/good-translation-wrong-in-context/
