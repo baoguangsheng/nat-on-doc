@@ -131,17 +131,11 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
             sample["net_input"]["src_lengths"],
         )
         tgt_tokens = sample["target"]
-        if 'glat' in sample:
-            glat = sample['glat']
-        else:
-            glat = None
         prev_output_tokens = model.initialize_ctc_input(src_tokens)
-        outputs = model(src_tokens, src_lengths, prev_output_tokens, tgt_tokens, glat)
+        outputs = model(src_tokens, src_lengths, prev_output_tokens, tgt_tokens)
         losses, ctc_loss = [], []
 
         for obj in outputs:
-            if obj.startswith('glat'):
-                continue
             if obj == "word_ins":
                 _losses = self._compute_ctc_loss(
                     outputs[obj].get("out"),
@@ -186,10 +180,6 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
             "nsentences": nsentences,
             "sample_size": sample_size,
         }
-        if "glat_accu" in outputs:
-            logging_output["glat_accu"] = outputs['glat_accu']
-        if "glat_context_p" in outputs:
-            logging_output['glat_context_p'] = outputs['glat_context_p']
 
         for l in losses:
             logging_output[l["name"]] = (
@@ -218,9 +208,6 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
         metrics.log_derived(
             "ppl", lambda meters: utils.get_perplexity(meters["loss"].avg)
         )
-
-        log_metric("glat_accu", logging_outputs)
-        log_metric("glat_context_p", logging_outputs)
 
         for key in logging_outputs[0]:
             if key[-5:] == "-loss":

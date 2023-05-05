@@ -11,8 +11,7 @@ from fairseq.models.nat import FairseqNATModel
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
 import torch
 import torch.nn.functional as F
-from fairseq.models.nat.nonautoregressive_transformer import NATransformerEncoder, NATransformerDecoder, \
-    NATransformerModel
+from ..modules import NAGTransformerEncoder, NAGTransformerDecoder, NAGTransformerModel
 import logging
 import random
 from contextlib import contextmanager
@@ -34,11 +33,11 @@ def torch_seed(seed):
         torch.cuda.random.set_rng_state(state_cuda)
 
 
-@register_model("glat_ctc")
-class GlatCTC(FairseqNATModel):
+@register_model("gtrans_glat_ctc")
+class GTransGlatCTC(FairseqNATModel):
     def __init__(self, args, encoder, decoder):
         super().__init__(args, encoder, decoder)
-        self.mask_idx = self.unk
+        self.mask_idx = self.pad
 
     @property
     def allow_length_beam(self):
@@ -72,14 +71,14 @@ class GlatCTC(FairseqNATModel):
 
     @classmethod
     def build_encoder(cls, args, tgt_dict, embed_tokens):
-        encoder = NATransformerEncoder(args, tgt_dict, embed_tokens)
+        encoder = NAGTransformerEncoder(args, tgt_dict, embed_tokens)
         if getattr(args, "apply_bert_init", False):
             encoder.apply(init_bert_params)
         return encoder
 
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
-        decoder = NATransformerDecoder(args, tgt_dict, embed_tokens)
+        decoder = NAGTransformerDecoder(args, tgt_dict, embed_tokens)
         if getattr(args, "apply_bert_init", False):
             decoder.apply(init_bert_params)
         return decoder
@@ -94,7 +93,6 @@ class GlatCTC(FairseqNATModel):
         history = decoder_out.history
 
         # execute the decoder
-        output_masks = output_tokens.ne(self.pad)
         dec_out = self.decoder(
             prev_output_tokens=output_tokens,
             encoder_out=encoder_out,
@@ -102,7 +100,12 @@ class GlatCTC(FairseqNATModel):
             num_updates=step,
         )
         _scores, _tokens = dec_out.max(-1)
-        _tokens = _tokens.masked_fill(~output_masks, self.pad)
+        # output_masks = output_tokens.ne(self.pad)
+        # _tokens = _tokens.masked_fill(~output_masks, self.pad)
+        # baogs: only enable the UNK to be replaced by token prediction
+        output_masks = output_tokens.eq(self.unk) & _tokens.ne(self.bos) & _tokens.ne(self.eos)
+        _tokens = _tokens * output_masks + output_tokens * (~output_masks)
+
         new_output_tokens = torch.zeros_like(_tokens).fill_(self.pad)
         batch_size, seq_len = _tokens.size()
         for bidx in range(batch_size):
@@ -137,6 +140,13 @@ class GlatCTC(FairseqNATModel):
         initial_output_tokens.masked_fill_(
             idx_length[None, :] < length_tgt[:, None], self.unk
         )
+        # baogs: set <s> and </s> in tgt corresponding to src
+        idx_src = utils.new_arange(src_tokens, src_tokens.size(1))
+        idx_tgt = (src_tokens == self.bos) * (idx_src.unsqueeze(0) * 2)
+        initial_output_tokens.scatter_(1, idx_tgt, self.bos)
+        idx_tgt = (src_tokens == self.eos) * (idx_src.unsqueeze(0) * 2 + 1)
+        initial_output_tokens.scatter_(1, idx_tgt, self.eos)
+
         initial_output_tokens[:, 0] = self.bos
         initial_output_tokens.scatter_(1, length_tgt[:, None] - 1, self.eos)
         return initial_output_tokens
@@ -193,6 +203,50 @@ class GlatCTC(FairseqNATModel):
     def get_num_updates(self):
         return self._num_updates
 
+    def get_align_target(self, x, target, output_lens):
+        _, output_len, _ = x.size()
+        bsz, target_len = target.size()
+        expand_len = 2 * target_len + 1
+        target_lens = target.ne(self.pad).sum(-1)
+        lprob = torch.log_softmax(x, dim=-1, dtype=torch.float32)
+        target_lprob = lprob.gather(dim=-1, index=target.unsqueeze(1).expand(-1, output_len, -1)).transpose(0, 1)
+        bsz_range = torch.arange(end=bsz).cuda()
+        target_range = torch.arange(end=target_len).cuda()
+        expand_range = torch.arange(end=expand_len).unsqueeze(-1).cuda()
+        ctc_dp = torch.zeros([output_len, 2 * target_len + 3, bsz]).fill_(float('-inf')).type_as(lprob)
+        ctc_dp[0, 2, :] = lprob[:, 0, self.mask_idx]
+        ctc_dp[0, 3, :] = target_lprob[0, :, 0]
+        blank_ids = (torch.arange(start=1, end=target_len + 2) * 2).cuda()
+        label_ids = (torch.arange(start=1, end=target_len + 1) * 2 + 1).cuda()
+        cur_path = (torch.zeros([bsz, 1, expand_len]).long()).cuda()
+        cur_path[:, 0, 0] = self.mask_idx
+        cur_path[:, 0, 1] = target[:, 0]
+        blank_target = torch.stack([torch.full_like(target, self.mask_idx), target], dim=-1).flatten(start_dim=-2)
+        blank_target = torch.cat([blank_target, torch.full([bsz, 1], self.mask_idx).long().cuda()],
+                                 dim=-1).unsqueeze(1)
+        l_mask = torch.zeros([expand_len, bsz]).long().cuda()
+        l_mask[label_ids - 2, :] = 1
+        l_mask = l_mask.bool()
+        for i in range(1, output_len):
+            # dynamic programming for computing the largest align score
+            choose_s2 = (ctc_dp[i - 1][2:expand_len + 2].le(ctc_dp[i - 1][1:expand_len + 1])).long()
+            blank_max = torch.max(ctc_dp[i - 1][2:expand_len + 2], ctc_dp[i - 1][1:expand_len + 1])
+            ctc_dp[i, blank_ids] = blank_max[blank_ids - 2] + (lprob[:, i, self.mask_idx]).unsqueeze(0)
+            choose_s1 = ctc_dp[i - 1][:expand_len].ge(blank_max)
+            choose_s2[choose_s1 & l_mask] = 2
+            label_max = torch.max(ctc_dp[i - 1][:expand_len], blank_max)
+            ctc_dp[i, label_ids] = label_max[label_ids - 2] + (target_lprob[i, :, target_range]).transpose(0, 1)
+            # get the path corresponding to the largest align score
+            in_output = (output_lens > i).long().unsqueeze(0)
+            select_idx = expand_range - (choose_s2 * in_output).long()
+            select_idx = select_idx.transpose(0, 1).unsqueeze(1).repeat(1, i, 1)
+            previous_path = cur_path.gather(dim=-1, index=select_idx)
+            cur_path = torch.cat([previous_path, blank_target], dim=1)
+        last_is_blank = ctc_dp[output_len - 1, 2 * target_lens + 2, bsz_range].ge(
+            ctc_dp[output_len - 1, 2 * target_lens + 1, bsz_range])
+        align_path = cur_path[bsz_range, :, last_is_blank.long() + 2 * target_lens - 1]
+        return align_path
+
     def forward(
             self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, glat=None, **kwargs
     ):
@@ -233,9 +287,24 @@ class GlatCTC(FairseqNATModel):
                 keep_prob = ((seq_lens - same_num) / seq_lens * glat['context_p']).unsqueeze(-1)
                 # keep: True, drop: False
                 keep_word_mask = (torch.rand(prev_output_tokens.shape, device=word_ins_out.device) < keep_prob).bool()
-
+                # baogs: skip <s> and </s> in oracle
+                keep_word_mask = keep_word_mask & (oracle != 0) & (oracle != 2)
                 glat_prev_output_tokens = prev_output_tokens.masked_fill(keep_word_mask, 0) + oracle.masked_fill(
                     ~keep_word_mask, 0)
+                glat_tgt_tokens = oracle.masked_fill(keep_word_mask, self.pad)
+                # align_path = self.get_align_target(word_ins_out, target, seq_lens)
+                # align_path = align_path.masked_fill(decoder_padding_mask, self.pad)
+                # same_target = pred_tokens.eq(align_path)
+                # same_target = same_target.masked_fill(decoder_padding_mask, False)
+                # same_num = same_target.sum(-1)
+                # input_mask = torch.ones_like(prev_output_tokens)
+                # for li in range(bsz):
+                #     target_num = (((seq_lens[li] - same_num[li]).float()) * glat['context_p']).long()
+                #     if target_num > 0:
+                #         input_mask[li].scatter_(dim=0, index=torch.randperm(seq_lens[li])[:target_num].cuda(), value=0)
+                # input_mask = input_mask.eq(1)
+                # input_mask = input_mask.masked_fill(decoder_padding_mask,False)
+                # glat_prev_output_tokens = prev_output_tokens.masked_fill(~input_mask, 0) + align_path.masked_fill(input_mask, 0)
 
                 prev_output_tokens = glat_prev_output_tokens
 
@@ -265,7 +334,7 @@ class GlatCTC(FairseqNATModel):
 
 
 @register_model_architecture(
-    "glat_ctc", "glat_ctc_6e6d512"
+    "gtrans_glat_ctc", "gtrans_glat_ctc_6e6d512"
 )
 def base_architecture(args):
     args.encoder_embed_path = getattr(args, "encoder_embed_path", None)
@@ -313,7 +382,7 @@ def base_architecture(args):
 
 
 @register_model_architecture(
-    "glat_ctc", "glat_ctc"
+    "gtrans_glat_ctc", "gtrans_glat_ctc"
 )
 def glat_architecture(args):
     args.encoder_layers = getattr(args, "encoder_layers", 6)
@@ -329,7 +398,7 @@ def glat_architecture(args):
 
 
 @register_model_architecture(
-    "glat_ctc", "glat_ctc_base"
+    "gtrans_glat_ctc", "gtrans_glat_ctc_base"
 )
 def base_architecture2(args):
     base_architecture(args)

@@ -31,8 +31,8 @@ def torch_seed(seed):
         torch.cuda.random.set_rng_state(state_cuda)
 
 
-@register_model("glat")
-class Glat(FairseqNATModel):
+@register_model("nat")
+class Nat(FairseqNATModel):
     forward_decoder = NATransformerModel.forward_decoder
     initialize_output_tokens = NATransformerModel.initialize_output_tokens
     regenerate_length_beam = NATransformerModel.regenerate_length_beam
@@ -85,7 +85,7 @@ class Glat(FairseqNATModel):
         return decoder
 
     def forward(
-            self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, glat=None, **kwargs
+            self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, **kwargs
     ):
         # encoding
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, **kwargs)
@@ -100,35 +100,6 @@ class Glat(FairseqNATModel):
         nonpad_positions = tgt_tokens.ne(self.pad)
         seq_lens = (nonpad_positions).sum(1)
         rand_seed = random.randint(0, 19260817)
-        # glancing sampling
-        glat_info = None
-        if glat and tgt_tokens is not None:
-            with torch.no_grad():
-                with torch_seed(rand_seed):
-                    word_ins_out = self.decoder(
-                        normalize=False,
-                        prev_output_tokens=prev_output_tokens,
-                        encoder_out=encoder_out,
-                    )
-                pred_tokens = word_ins_out.argmax(-1)
-                same_num = ((pred_tokens == tgt_tokens) & nonpad_positions).sum(1)
-                input_mask = torch.ones_like(nonpad_positions)
-                bsz, seq_len = tgt_tokens.size()
-                for li in range(bsz):
-                    target_num = (((seq_lens[li] - same_num[li].sum()).float()) * glat['context_p']).long()
-                    if target_num > 0:
-                        input_mask[li].scatter_(dim=0, index=torch.randperm(seq_lens[li])[:target_num].cuda(), value=0)
-                input_mask = input_mask.eq(1)
-                input_mask = input_mask.masked_fill(~nonpad_positions,False)
-                glat_prev_output_tokens = prev_output_tokens.masked_fill(~input_mask, 0) + tgt_tokens.masked_fill(input_mask, 0)
-                glat_tgt_tokens = tgt_tokens.masked_fill(~input_mask, self.pad)
-
-                prev_output_tokens, tgt_tokens = glat_prev_output_tokens, glat_tgt_tokens
-
-                glat_info = {
-                    "glat_accu": (same_num.sum() / seq_lens.sum()).item(),
-                    "glat_context_p": glat['context_p'],
-                }
 
         with torch_seed(rand_seed):
             word_ins_out = self.decoder(
@@ -151,14 +122,9 @@ class Glat(FairseqNATModel):
                 "factor": self.decoder.length_loss_factor*(tgt_tokens.ne(self.pad).sum().item())/(seq_lens.sum().item()),
             }
         }
-        if glat_info is not None:
-            ret.update(glat_info)
         return ret
 
 
-@register_model_architecture(
-    "glat", "glat_6e6d512"
-)
 def base_architecture(args):
     args.encoder_embed_path = getattr(args, "encoder_embed_path", None)
     args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
@@ -205,9 +171,9 @@ def base_architecture(args):
 
 
 @register_model_architecture(
-    "glat", "glat"
+    "nat", "nat"
 )
-def glat_architecture(args):
+def nat_architecture(args):
     args.encoder_layers = getattr(args, "encoder_layers", 6)
     args.encoder_embed_dim = getattr(args, "encoder_embed_dim", 512)
     args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", args.encoder_embed_dim*4)
@@ -220,7 +186,7 @@ def glat_architecture(args):
     base_architecture(args)
 
 @register_model_architecture(
-    "glat", "glat_base"
+    "nat", "nat_base"
 )
 def base_architecture2(args):
     base_architecture(args)

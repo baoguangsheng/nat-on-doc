@@ -1,2 +1,2 @@
-from .glat import *
-from .glat_ctc import *
+from .nat import *
+from .nat_ctc import *

@@ -10,7 +10,7 @@ from fairseq.models import register_model, register_model_architecture
 from fairseq.models.nat import FairseqNATModel
 from fairseq.modules.transformer_sentence_encoder import init_bert_params
 import torch
-from fairseq.models.nat.nonautoregressive_transformer import NATransformerEncoder, NATransformerDecoder, NATransformerModel
+from ..modules import NAGTransformerEncoder, NAGTransformerDecoder, NAGTransformerModel
 import logging
 import random
 from contextlib import contextmanager
@@ -31,11 +31,11 @@ def torch_seed(seed):
         torch.cuda.random.set_rng_state(state_cuda)
 
 
-@register_model("glat")
-class Glat(FairseqNATModel):
-    forward_decoder = NATransformerModel.forward_decoder
-    initialize_output_tokens = NATransformerModel.initialize_output_tokens
-    regenerate_length_beam = NATransformerModel.regenerate_length_beam
+@register_model("gtrans_glat")
+class GTransGlat(FairseqNATModel):
+    forward_decoder = NAGTransformerModel.forward_decoder
+    initialize_output_tokens = NAGTransformerModel.initialize_output_tokens
+    regenerate_length_beam = NAGTransformerModel.regenerate_length_beam
 
     def __init__(self, args, encoder, decoder):
         super().__init__(args, encoder, decoder)
@@ -72,14 +72,14 @@ class Glat(FairseqNATModel):
 
     @classmethod
     def build_encoder(cls, args, tgt_dict, embed_tokens):
-        encoder = NATransformerEncoder(args, tgt_dict, embed_tokens)
+        encoder = NAGTransformerEncoder(args, tgt_dict, embed_tokens)
         if getattr(args, "apply_bert_init", False):
             encoder.apply(init_bert_params)
         return encoder
 
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
-        decoder = NATransformerDecoder(args, tgt_dict, embed_tokens)
+        decoder = NAGTransformerDecoder(args, tgt_dict, embed_tokens)
         if getattr(args, "apply_bert_init", False):
             decoder.apply(init_bert_params)
         return decoder
@@ -94,7 +94,7 @@ class Glat(FairseqNATModel):
         length_out = self.decoder.forward_length(
             normalize=False, encoder_out=encoder_out
         )
-        length_tgt = self.decoder.forward_length_prediction(
+        length_tgt, length_mask = self.decoder.forward_length_prediction(
             length_out, encoder_out, tgt_tokens
         )
         nonpad_positions = tgt_tokens.ne(self.pad)
@@ -148,6 +148,7 @@ class Glat(FairseqNATModel):
             "length": {
                 "out": length_out,
                 "tgt": length_tgt,
+                "mask": length_mask,
                 "factor": self.decoder.length_loss_factor*(tgt_tokens.ne(self.pad).sum().item())/(seq_lens.sum().item()),
             }
         }
@@ -157,7 +158,7 @@ class Glat(FairseqNATModel):
 
 
 @register_model_architecture(
-    "glat", "glat_6e6d512"
+    "gtrans_glat", "gtrans_glat_6e6d512"
 )
 def base_architecture(args):
     args.encoder_embed_path = getattr(args, "encoder_embed_path", None)
@@ -205,7 +206,7 @@ def base_architecture(args):
 
 
 @register_model_architecture(
-    "glat", "glat"
+    "gtrans_glat", "gtrans_glat"
 )
 def glat_architecture(args):
     args.encoder_layers = getattr(args, "encoder_layers", 6)
@@ -220,7 +221,7 @@ def glat_architecture(args):
     base_architecture(args)
 
 @register_model_architecture(
-    "glat", "glat_base"
+    "gtrans_glat", "gtrans_glat_base"
 )
 def base_architecture2(args):
     base_architecture(args)

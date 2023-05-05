@@ -17,7 +17,7 @@ from omegaconf import II
 import numpy as np
 
 NOISE_CHOICES = ChoiceEnum(["random_delete", "random_mask", "no_noise", "full_mask"])
-
+DOC_MODE_CHOICES = ChoiceEnum(["full", "partial"])
 
 @dataclass
 class TranslationLevenshteinConfig(TranslationConfig):
@@ -36,19 +36,37 @@ class TranslationLevenshteinConfig(TranslationConfig):
     total_up: int = field(
         default=300000, metadata={"help": "total updates"}
     )
-
+    # Guangsheng Bao: new arguments for doc-NMT
+    doc_mode: DOC_MODE_CHOICES = field(
+        default="full",
+        metadata={
+            "help": 'work mode as a document-level NMT. full - a normal transformer. partial - transformer with local/global attention.'
+        }
+    )
+    encoder_ctxlayers: int = field(
+        default=2, metadata={"help": "how many layers for global attention."}
+    )
+    decoder_ctxlayers: int = field(
+        default=2, metadata={"help": "how many layers for global attention."}
+    )
+    cross_ctxlayers: int = field(
+        default=2, metadata={"help": "how many layers for global attention."}
+    )
 
 logger = logging.getLogger(__name__)
 
 
-@register_task("translation_lev_modified", dataclass=TranslationLevenshteinConfig)
-class TranslationLevenshteinModifiedTask(TranslationTask):
+@register_task("translation_lev_modified_doc", dataclass=TranslationLevenshteinConfig)
+class DocTranslationLevenshteinModifiedTask(TranslationTask):
     """
     Translation (Sequence Generation) task for Levenshtein Transformer
     See `"Levenshtein Transformer" <https://arxiv.org/abs/1905.11006>`_.
     """
 
     cfg: TranslationLevenshteinConfig
+
+    def __init__(self, args, src_dict, tgt_dict):
+        super().__init__(args, src_dict, tgt_dict)
 
     def load_dataset(self, split, epoch=1, combine=False, **kwargs):
         """Load a given dataset split.
@@ -77,7 +95,7 @@ class TranslationLevenshteinModifiedTask(TranslationTask):
             left_pad_target=self.cfg.left_pad_target,
             max_source_positions=self.cfg.max_source_positions,
             max_target_positions=self.cfg.max_target_positions,
-            prepend_bos=True,
+            prepend_bos=False,  # baogs: src/tgt sequences have already include <s> and </s>
         )
 
     def inject_noise(self, target_tokens):

@@ -12,7 +12,66 @@ from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 from torch import Tensor
 import numpy as np
+from ..modules.nonautoregressive_gtransformer import tokens2tags
 
+def tags2index(tags):
+    tag_max = tags.max()
+    index_tag = torch.arange(1, tag_max + 1, device=tags.device)
+    mask_tag = tags.unsqueeze(1) == index_tag.view(1, -1, 1)
+    ntok_tag = mask_tag.sum(-1)
+    # get token indexes of each tag
+    ntok_mean = ntok_tag[ntok_tag > 0].float().mean().long()
+    ntok_max = ntok_tag.max()
+    ntok_top = min(ntok_max, ntok_mean * 3)
+    index_tok = torch.arange(0, tags.size(1), device=tags.device)
+    index_pad = 99999
+    index_tok = mask_tag * index_tok.view(1, 1, -1) + (~mask_tag) * index_pad
+    index_tok = torch.topk(index_tok, ntok_top, dim=-1, largest=False).values
+    mask_tok = index_tok != index_pad
+    index_tok = mask_tok * index_tok
+    return index_tok, mask_tok
+
+def index2value(input, index, mask, padding):
+    index0 = torch.arange(0, index.size(0)).view(-1, 1, 1)
+    value = input[index0, index]
+    if len(value.size()) > len(mask.size()):
+        mask = mask.unsqueeze(-1)
+    return value * mask + padding * (~mask)
+
+def tokens2sents(tokens, lprobs=None):
+    # get start and end positions of all sentences
+    sents = []
+    for line in tokens.tolist():
+        sline = []
+        for i in range(len(line)):
+            if line[i] == 0:  # bos
+                sline.append([i, -1])
+            elif line[i] == 2:  # eos
+                sline[-1][1] = i
+        assert np.all(t > s for s, t in sline)
+        sents.append(sline)
+    # split the sentences
+    nsent = np.sum(len(sline) for sline in sents)
+    max_len = np.max([np.max([t - s + 1 for s, t in sline]) for sline in sents])
+    new_tokens = tokens.new_ones((nsent, max_len))
+    i = j = 0
+    for sline in sents:
+        for s, t in sline:
+            new_tokens[j, : t - s + 1] = tokens[i, s: t + 1]
+            j += 1
+        i += 1
+    # lprobs
+    if lprobs is not None:
+        new_lprobs = lprobs.new_zeros((nsent, max_len, lprobs.size(-1)))
+        i = j = 0
+        for sline in sents:
+            for s, t in sline:
+                new_lprobs[j, : t - s + 1, :] = lprobs[i, s: t + 1, :]
+                j += 1
+            i += 1
+        return new_tokens, new_lprobs
+    else:
+        return new_tokens
 
 @register_criterion("ctc_loss")
 class LabelSmoothedCTCCriterion(FairseqCriterion):
@@ -80,7 +139,7 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
         return {"name": name, "loss": loss, "nll_loss": nll_loss, "factor": factor}
 
     def _compute_ctc_loss(
-            self, outputs, targets, output_mask, target_mask, label_smoothing=0.0, name="loss", factor=1.0
+            self, outputs, prev_output_tokens, targets, output_mask, target_mask, label_smoothing=0.0, name="loss", factor=1.0
     ):
         """
         outputs: batch x len x d_model
@@ -97,9 +156,37 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
                 if dim is None
                 else x.float().mean(dim).type_as(x)
             )
+
+        lprobs = F.log_softmax(outputs, dim=-1, dtype=torch.float32)
+
+        # baogs: split sentences for CTC loss
+        # prev_output_tokens, lprobs = tokens2sents(prev_output_tokens, lprobs=lprobs)
+        # targets = tokens2sents(targets)
+        # output_mask = prev_output_tokens.ne(self.padding_idx)
+        # target_mask = targets.ne(self.padding_idx)
+
+        # baogs: split sentences for CTC loss
+        tags_prev = tokens2tags(self.task.target_dictionary, prev_output_tokens)
+        tags_tgt = tokens2tags(self.task.target_dictionary, targets)
+        index_prev, mask_prev = tags2index(tags_prev)
+        index_tgt, mask_tgt = tags2index(tags_tgt)
+        lprobs = index2value(lprobs, index_prev, mask_prev, 0.0)
+        targets = index2value(targets, index_tgt, mask_tgt, self.padding_idx)
+        lprobs = lprobs.view(-1, lprobs.size(2), lprobs.size(3))
+        mask_prev = mask_prev.view(-1, mask_prev.size(2))
+        targets = targets.view(-1, targets.size(2))
+        mask_tgt = mask_tgt.view(-1, mask_tgt.size(2))
+        # filter empty tags
+        mask_item = mask_tgt.any(-1)
+        lprobs = lprobs[mask_item]
+        targets = targets[mask_item]
+        output_mask = mask_prev[mask_item]
+        target_mask = mask_tgt[mask_item]
+
+        # output_mask = mask_prev
+        # target_mask = mask_tgt
         output_lens = output_mask.sum(-1)
         target_lens = target_mask.sum(-1)
-        lprobs = F.log_softmax(outputs, dim=-1, dtype=torch.float32)
         losses = self.ctc_loss(lprobs.transpose(0, 1), targets, output_lens, target_lens)
         ctc_loss = losses.sum()/(output_lens.sum().float())
         lprobs = lprobs[output_mask]
@@ -145,6 +232,7 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
             if obj == "word_ins":
                 _losses = self._compute_ctc_loss(
                     outputs[obj].get("out"),
+                    prev_output_tokens,
                     outputs[obj].get("tgt"),
                     prev_output_tokens.ne(self.task.tgt_dict.pad()),
                     tgt_tokens.ne(self.task.tgt_dict.pad()),

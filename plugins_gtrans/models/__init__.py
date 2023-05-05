@@ -1,2 +1,2 @@
-from .glat import *
-from .glat_ctc import *
+from .gtrans_glat import *
+from .gtrans_glat_ctc import *
