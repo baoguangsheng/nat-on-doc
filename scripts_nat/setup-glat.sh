@@ -11,3 +11,5 @@ user_site=$(python -c "import sysconfig; print(sysconfig.get_path('purelib'))")
 cp ./GLAT/imputer-pytorch/torch_imputer/*.* $user_site/torch_imputer/
 
 pip install --editable ./GLAT/.
+cp ./plugins_gtrans/generate.py ./GLAT/fairseq_cli/generate2.py -f
+cp ./plugins_gtrans/validate.py ./GLAT/fairseq_cli/validate2.py -f

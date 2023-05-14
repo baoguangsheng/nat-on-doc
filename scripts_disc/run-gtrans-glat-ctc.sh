@@ -61,7 +61,7 @@ elif [ $mode == "test" ]; then
   echo `date`, Testing model on test dataset...
   bin_path=$exp_path/$data-doc.binarized.$slang-$tlang
   cp_path=$run_path/$data-doc.checkpoints.$slang-$tlang
-  python -m fairseq_cli.generate $bin_path --path $cp_path/checkpoint_best.pt --user-dir $plugin_path \
+  python -m fairseq_cli.generate2 $bin_path --path $cp_path/checkpoint_best.pt --user-dir $plugin_path \
       --task translation_lev_modified_doc --max-sentences 20 --source-lang $slang --target-lang $tlang \
       --iter-decode-max-iter 0 --iter-decode-eos-penalty 0 --iter-decode-with-beam 1 --gen-subset test \
       --doc-mode partial --tokenizer moses --remove-bpe --sacrebleu --scoring sacrebleu \
@@ -74,7 +74,8 @@ elif [ $mode == "score" ]; then
   bin_path=$exp_path/$data-doc.binarized.$slang-$tlang
   res_path=$run_path/$data-doc.results.$slang-$tlang
   mkdir -p $res_path
-  python -m fairseq_cli.validate $bin_path --path $cp_path/checkpoint_best.pt --user-dir $plugin_path \
+
+  python -m fairseq_cli.validate2 $bin_path --path $cp_path/checkpoint_best.pt --user-dir $plugin_path \
          --task translation_lev_modified_doc --max-sentences 20 --source-lang $slang --target-lang $tlang \
          --doc-mode partial --valid-subset deixis,ellinfl,ellvp,lexcohe --batch-size 1 \
          --gen-output $res_path/valid.$data.$slang-$tlang > $run_path/valid.$data.$slang-$tlang.log 2>&1

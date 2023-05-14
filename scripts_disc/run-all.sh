@@ -28,7 +28,7 @@ exp_path=exp_disc_raw
 
 # 3. Train and evaluate G-Trans+GLAT+CTC
 bash scripts_nat/setup-glat.sh
-bash scripts_disc/run-gtrans-glat-ctc.sh train $exp_path
-bash scripts_disc/run-gtrans-glat-ctc.sh test $exp_path
+#bash scripts_disc/run-gtrans-glat-ctc.sh train $exp_path
+#bash scripts_disc/run-gtrans-glat-ctc.sh test $exp_path
 bash scripts_disc/run-gtrans-glat-ctc.sh score $exp_path
 

@@ -159,13 +159,13 @@ class LabelSmoothedCTCCriterion(FairseqCriterion):
 
         lprobs = F.log_softmax(outputs, dim=-1, dtype=torch.float32)
 
-        # baogs: split sentences for CTC loss
+        # Guangsheng Bao: split sentences for CTC loss
         # prev_output_tokens, lprobs = tokens2sents(prev_output_tokens, lprobs=lprobs)
         # targets = tokens2sents(targets)
         # output_mask = prev_output_tokens.ne(self.padding_idx)
         # target_mask = targets.ne(self.padding_idx)
 
-        # baogs: split sentences for CTC loss
+        # Guangsheng Bao: split sentences for CTC loss
         tags_prev = tokens2tags(self.task.target_dictionary, prev_output_tokens)
         tags_tgt = tokens2tags(self.task.target_dictionary, targets)
         index_prev, mask_prev = tags2index(tags_prev)

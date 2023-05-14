@@ -52,6 +52,9 @@ class TranslationLevenshteinConfig(TranslationConfig):
     cross_ctxlayers: int = field(
         default=2, metadata={"help": "how many layers for global attention."}
     )
+    gen_output: str = field(
+        default="", metadata={"help": "generate output"}
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +98,7 @@ class DocTranslationLevenshteinModifiedTask(TranslationTask):
             left_pad_target=self.cfg.left_pad_target,
             max_source_positions=self.cfg.max_source_positions,
             max_target_positions=self.cfg.max_target_positions,
-            prepend_bos=False,  # baogs: src/tgt sequences have already include <s> and </s>
+            prepend_bos=False,  # Guangsheng Bao: src/tgt sequences have already include <s> and </s>
         )
 
     def inject_noise(self, target_tokens):

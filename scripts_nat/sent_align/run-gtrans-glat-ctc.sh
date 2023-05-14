@@ -58,7 +58,7 @@ if [ $mode == "train" ]; then
 
 elif [ $mode == "test" ]; then
   echo `date`, Testing model on test dataset...
-  python -m fairseq_cli.generate $bin_path --path $cp_path/checkpoint_best.pt --user-dir $plugin_path \
+  python -m fairseq_cli.generate2 $bin_path --path $cp_path/checkpoint_best.pt --user-dir $plugin_path \
       --task translation_lev_modified_doc --max-sentences 20 --source-lang $slang --target-lang $tlang \
       --iter-decode-max-iter 0 --iter-decode-eos-penalty 0 --iter-decode-with-beam 1 --gen-subset test \
       --doc-mode partial --tokenizer moses --remove-bpe --sacrebleu --scoring sacrebleu \

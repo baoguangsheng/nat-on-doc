@@ -167,7 +167,7 @@ class NAGTransformerModel(FairseqNATModel):
         if len(length_tgt.size()) == 0:
             length_tgt = length_tgt.unsqueeze(0)
 
-        # baogs: predict the length for each sentence
+        # Guangsheng Bao: predict the length for each sentence
         length_tgt = length_tgt.clamp_(min=2) * length_mask
         length_all = length_tgt.sum(-1)
         max_length = length_all.max()
@@ -179,7 +179,7 @@ class NAGTransformerModel(FairseqNATModel):
         initial_output_tokens.masked_fill_(
             idx_length[None, :] < length_all[:, None], self.unk
         )
-        # baogs: set the bos and eos for each sentence
+        # Guangsheng Bao: set the bos and eos for each sentence
         start_tgt = torch.cat([length_tgt[:, -1:] * 0, length_tgt[:, :-1]], dim=-1) * length_mask
         start_tgt = torch.cumsum(start_tgt, dim=-1)
         end_tgt = torch.cumsum(length_tgt, dim=-1) - 1
@@ -427,13 +427,13 @@ class NAGTransformerDecoder(GTransformerDecoder):
     @ensemble_decoder
     def forward_length(self, normalize, encoder_out):
         # enc_feats = encoder_out["length_out"][0].squeeze(0)  # T x B x C
-        enc_feats = encoder_out["encoder_out"][0]
-        if len(encoder_out["encoder_padding_mask"]) > 0:
-            src_masks = encoder_out["encoder_padding_mask"][0]  # B x T
-        else:
-            src_masks = None
+        # if len(encoder_out["encoder_padding_mask"]) > 0:
+        #     src_masks = encoder_out["encoder_padding_mask"][0]  # B x T
+        # else:
+        #     src_masks = None
         # enc_feats = _mean_pooling(enc_feats, src_masks)
-        # baogs: predict length for each sentence
+        # Guangsheng Bao: predict length for each sentence
+        enc_feats = encoder_out["encoder_out"][0]
         encoder_tags = encoder_out['encoder_tags']
         max_tag = encoder_tags.max()
         all_tags = torch.arange(1, max_tag + 1, device=encoder_tags.device)
@@ -446,7 +446,7 @@ class NAGTransformerDecoder(GTransformerDecoder):
         if self.sg_length_pred:
             enc_feats = enc_feats.detach()
         length_out = F.linear(enc_feats, self.embed_length.weight)
-        # length_out[:, 0] += float('-inf')
+
         return F.log_softmax(length_out, -1) if normalize else length_out
 
     def extract_features(
@@ -512,7 +512,7 @@ class NAGTransformerDecoder(GTransformerDecoder):
                                    (src_embd + encoder_out['encoder_pos'][0]).transpose(1, 2))
             if src_mask is not None:
                 attn_score = attn_score.masked_fill(src_mask.unsqueeze(1).expand(-1, seq_len, -1), float('-inf'))
-            # baogs: mask copy-attention by group-tag
+            # Guangsheng Bao: mask copy-attention by group-tag
             if encoder_copy_mask is not None:
                 attn_score = attn_score.masked_fill(encoder_copy_mask, float('-inf'))
             attn_weight = F.softmax(attn_score, dim=-1)
@@ -571,11 +571,11 @@ class NAGTransformerDecoder(GTransformerDecoder):
         return x, {"attn": attn, "inner_states": inner_states}
 
     def forward_embedding(self, prev_output_tokens, states=None):
-        positions = (
-            self.embed_positions(prev_output_tokens)
-            if self.embed_positions is not None
-            else None
-        )
+        # positions = (
+        #     self.embed_positions(prev_output_tokens)
+        #     if self.embed_positions is not None
+        #     else None
+        # )
         # embed tokens and positions
         if states is None:
             x = self.embed_tokens(prev_output_tokens)
@@ -606,12 +606,12 @@ class NAGTransformerDecoder(GTransformerDecoder):
         return copied_embedding
 
     def forward_length_prediction(self, length_out, encoder_out, tgt_tokens=None):
-        enc_feats = encoder_out["encoder_out"][0]  # T x B x C
-        if len(encoder_out["encoder_padding_mask"]) > 0:
-            src_masks = encoder_out["encoder_padding_mask"][0]  # B x T
-        else:
-            src_masks = None
-        # baogs: predict length for each sentence
+        # enc_feats = encoder_out["encoder_out"][0]  # T x B x C
+        # if len(encoder_out["encoder_padding_mask"]) > 0:
+        #     src_masks = encoder_out["encoder_padding_mask"][0]  # B x T
+        # else:
+        #     src_masks = None
+        # Guangsheng Bao: predict length for each sentence
         encoder_tags = encoder_out['encoder_tags']
         max_tag = encoder_tags.max()
         all_tags = torch.arange(1, max_tag + 1, device=encoder_tags.device)
@@ -623,7 +623,7 @@ class NAGTransformerDecoder(GTransformerDecoder):
         if tgt_tokens is not None:
             # obtain the length target
             # tgt_lengs = tgt_tokens.ne(self.padding_idx).sum(1).long()
-            # baogs: predict length for each sentence
+            # Guangsheng Bao: predict length for each sentence
             tgt_tags = tokens2tags(self.dictionary, tgt_tokens)
             mask_tags = tgt_tags.unsqueeze(1) == all_tags.view(1, -1, 1)
             tgt_lengs = mask_tags.sum(-1)

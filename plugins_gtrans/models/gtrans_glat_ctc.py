@@ -102,7 +102,7 @@ class GTransGlatCTC(FairseqNATModel):
         _scores, _tokens = dec_out.max(-1)
         # output_masks = output_tokens.ne(self.pad)
         # _tokens = _tokens.masked_fill(~output_masks, self.pad)
-        # baogs: only enable the UNK to be replaced by token prediction
+        # Guangsheng Bao: only enable the UNK to be replaced by token prediction
         output_masks = output_tokens.eq(self.unk) & _tokens.ne(self.bos) & _tokens.ne(self.eos)
         _tokens = _tokens * output_masks + output_tokens * (~output_masks)
 
@@ -140,7 +140,7 @@ class GTransGlatCTC(FairseqNATModel):
         initial_output_tokens.masked_fill_(
             idx_length[None, :] < length_tgt[:, None], self.unk
         )
-        # baogs: set <s> and </s> in tgt corresponding to src
+        # Guangsheng Bao: set <s> and </s> in tgt corresponding to src
         idx_src = utils.new_arange(src_tokens, src_tokens.size(1))
         idx_tgt = (src_tokens == self.bos) * (idx_src.unsqueeze(0) * 2)
         initial_output_tokens.scatter_(1, idx_tgt, self.bos)
@@ -287,7 +287,7 @@ class GTransGlatCTC(FairseqNATModel):
                 keep_prob = ((seq_lens - same_num) / seq_lens * glat['context_p']).unsqueeze(-1)
                 # keep: True, drop: False
                 keep_word_mask = (torch.rand(prev_output_tokens.shape, device=word_ins_out.device) < keep_prob).bool()
-                # baogs: skip <s> and </s> in oracle
+                # Guangsheng Bao: skip <s> and </s> in oracle
                 keep_word_mask = keep_word_mask & (oracle != 0) & (oracle != 2)
                 glat_prev_output_tokens = prev_output_tokens.masked_fill(keep_word_mask, 0) + oracle.masked_fill(
                     ~keep_word_mask, 0)

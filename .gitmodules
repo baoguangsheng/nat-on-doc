@@ -7,3 +7,6 @@
 [submodule "CADec"]
 	path = CADec
 	url = https://github.com/lena-voita/good-translation-wrong-in-context/
+[submodule "DA-Trans"]
+	path = DA-Trans
+	url = https://github.com/thu-coai/DA-Transformer.git
