@@ -15,7 +15,6 @@ from ..modules import NAGTransformerEncoder, NAGTransformerDecoder, NAGTransform
 import logging
 import random
 from contextlib import contextmanager
-from torch_imputer.imputer import best_alignment
 
 logger = logging.getLogger(__name__)
 
@@ -250,6 +249,7 @@ class GTransGlatCTC(FairseqNATModel):
     def forward(
             self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, glat=None, **kwargs
     ):
+        from torch_imputer.imputer import best_alignment
         # encoding
         encoder_out = self.encoder(src_tokens, src_lengths=src_lengths, **kwargs)
 

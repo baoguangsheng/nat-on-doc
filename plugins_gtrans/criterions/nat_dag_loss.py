@@ -242,7 +242,8 @@ class NATDAGLoss(FairseqCriterion):
                 keep_prob = (prob >= prob_thresh.unsqueeze(-1)).to(prob.dtype)
 
             keep_word_mask = (torch.rand(prev_output_tokens.shape, device=prev_output_tokens.device) < keep_prob).bool()
-
+            # Guangsheng Bao: skip <s> and </s> in oracle
+            keep_word_mask = keep_word_mask & (oracle != 0) & (oracle != 2)
             glat_prev_output_tokens = prev_output_tokens.masked_fill(keep_word_mask, 0) + oracle.masked_fill(~keep_word_mask, 0)
             glat_tgt_tokens = tgt_tokens
 

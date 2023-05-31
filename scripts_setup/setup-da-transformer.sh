@@ -4,7 +4,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-# DA-Transformer requires A100 and above pytorch1.10!
+# DA-Transformer requires A100/80G and above pytorch1.10!
 pip install protobuf==3.19.1
 pip install ninja==1.11.1 sacrebleu==1.4.14 tensorboard==2.6.0
 
