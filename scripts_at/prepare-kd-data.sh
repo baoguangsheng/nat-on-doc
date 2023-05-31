@@ -71,6 +71,9 @@ for D in train; do
   diff $seg_path/$D.$tlang.ref0 $seg_path/$D.$tlang.ref1 | wc -l
 done
 
+echo `date`, Filter invalid data which target_len / source_len > 2.0 ...
+python ../scripts_at/filter_data.py --data-path $seg_path --slang $slang --tlang $tlang
+
 echo `date`, Generate binarized files ...
 dict_path=$src_bin_path/dict.$slang.txt
 python -m fairseq_cli.preprocess --task translation --source-lang $slang --target-lang $tlang \

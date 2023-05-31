@@ -1,7 +1,17 @@
 import numpy as np
 import os.path as path
-from utils import load_lines, save_lines
+import codecs
 import argparse
+
+def load_lines(file_name):
+    with codecs.open(file_name, 'r', 'utf-8') as fin:
+        lines = [line.strip() for line in fin.readlines()]
+        return lines
+
+def save_lines(file_name, lines):
+    with codecs.open(file_name, 'w', 'utf-8') as fout:
+        for line in lines:
+            print(line, file=fout)
 
 def filter(args, split):
     src_lines = load_lines(path.join(args.data_path, f'{split}.{args.slang}'))

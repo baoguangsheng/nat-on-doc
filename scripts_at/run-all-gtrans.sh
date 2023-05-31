@@ -19,25 +19,25 @@ data=$1
 input=doc
 
 # 1. Prepare environment for the model
-bash scripts_at/setup-gtrans.sh
+bash scripts_setup/setup-gtransformer.sh
 
 # 2. Prepare raw datasets and train AT models
-exp_path=exp_raw_sep  # raw data with separator between sentences
-#bash scripts_at/run-gtrans.sh $data data $exp_path
-bash scripts_at/run-gtrans.sh $data train $exp_path
-bash scripts_at/run-gtrans.sh $data test $exp_path
+exp_path=exp_sentalign_raw
+#bash scripts_at/run-gtransformer.sh $data data $exp_path
+bash scripts_at/run-gtransformer.sh $data train $exp_path
+bash scripts_at/run-gtransformer.sh $data test $exp_path
 
 # 3. Knowledge distillation from the trained models
-from_exp_path=exp_raw_sep
-exp_path=exp_kd_sep
-bash scripts_at/prepare-data-kd.sh $data $from_exp_path $exp_path $input
+from_exp_path=exp_sentalign_raw
+exp_path=exp_sentalign_kd
+bash scripts_at/prepare-kd-data.sh $data $from_exp_path $exp_path $input
 
 # 4. Remove sentence separator for none G-Trans models
-from_exp_path=exp_raw_sep
-exp_path=exp_raw_nosep
-bash scripts_at/prepare-data-nosep.sh $data $from_exp_path $exp_path $input
+from_exp_path=exp_sentalign_raw
+exp_path=exp_otheralign_raw
+bash scripts_at/remove-sentalign.sh $data $from_exp_path $exp_path $input
 
-from_exp_path=exp_kd_sep
-exp_path=exp_kd_nosep
-bash scripts_at/prepare-data-nosep.sh $data $from_exp_path $exp_path $input
+from_exp_path=exp_sentalign_kd
+exp_path=exp_otheralign_kd
+bash scripts_at/remove-sentalign.sh $data $from_exp_path $exp_path $input
 
