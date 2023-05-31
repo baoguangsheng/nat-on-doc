@@ -94,8 +94,8 @@ class DocTranslationLevenshteinModifiedTask(TranslationTask):
             combine=combine,
             dataset_impl=self.cfg.dataset_impl,
             upsample_primary=self.cfg.upsample_primary,
-            left_pad_source=self.cfg.left_pad_source,
-            left_pad_target=self.cfg.left_pad_target,
+            left_pad_source=False,  # Guangsheng Bao: force right pad.  self.cfg.left_pad_source,
+            left_pad_target=False,  # Guangsheng Bao: force right pad. self.cfg.left_pad_target,
             max_source_positions=self.cfg.max_source_positions,
             max_target_positions=self.cfg.max_target_positions,
             prepend_bos=False,  # Guangsheng Bao: src/tgt sequences have already include <s> and </s>
@@ -214,13 +214,16 @@ class DocTranslationLevenshteinModifiedTask(TranslationTask):
             self, sample, model, criterion, optimizer, update_num, ignore_grad=False
     ):
         model.train()
+        sample['update_num'] = update_num
         train_ratio = max(0, min(1, update_num / self.cfg.total_up))
         sample["glat"] = {"context_p": self.cfg.start_p - self.cfg.minus_p * train_ratio}
         sample["prev_target"] = self.inject_noise(sample["target"])
+        if ignore_grad:
+            sample['dummy'] = True
         with torch.autograd.profiler.record_function("forward"):
             loss, sample_size, logging_output = criterion(model, sample)
         if ignore_grad:
-            loss *= 0
+            loss *= 0.0
         with torch.autograd.profiler.record_function("backward"):
             optimizer.backward(loss)
         return loss, sample_size, logging_output

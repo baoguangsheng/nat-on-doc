@@ -408,9 +408,8 @@ class NAGTransformerDecoder(GTransformerDecoder):
         self.pred_length_offset = getattr(args, "pred_length_offset", False)
         self.length_loss_factor = getattr(args, "length_loss_factor", 1)
         self.src_embedding_copy = getattr(args, "src_embedding_copy", False)
-        if self.length_loss_factor>0:
-            self.embed_length = Embedding(getattr(args, "max_target_positions", 256), self.encoder_embed_dim, None)
-            torch.nn.init.normal_(self.embed_length.weight, mean=0, std=0.02)
+        self.embed_length = Embedding(getattr(args, "max_target_positions", 256), self.encoder_embed_dim, None)
+        torch.nn.init.normal_(self.embed_length.weight, mean=0, std=0.02)
         if self.src_embedding_copy:
             self.copy_attn = torch.nn.Linear(self.embed_dim, self.embed_dim, bias=False)
 
