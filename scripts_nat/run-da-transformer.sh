@@ -71,19 +71,21 @@ elif [ $mode == "test" ]; then
     --model-overrides "{\"decode_strategy\":\"lookahead\",\"decode_beta\":1}" \
     --path $cp_path/checkpoint_best.pt \
     --remove-bpe --tokenizer moses --sacrebleu --scoring sacrebleu \
-    > $run_path/test.$data-$input.$slang-$tlang.log 2>&1
+    > $run_path/test-lookahead.$data-$input.$slang-$tlang.log 2>&1
 
   # beam search
-#  fairseq-generate $bin_path \
+#  fairseq-generate $bin_path --source-lang $slang --target-lang $tlang \
 #      --gen-subset test --user-dir fs_plugins --task translation_lev_modified \
 #      --iter-decode-max-iter 0 --iter-decode-eos-penalty 0 --beam 1 \
-#      --remove-bpe --batch-size 32 --seed 0 \
+#      --batch-size 20 --seed 0 \
 #      --model-overrides "{\"decode_strategy\": \"beamsearch\", \"decode_beta\": 1, \
 #          \"decode_alpha\": 1.1, \"decode_gamma\": 0, \
 #          \"decode_lm_path\": None, \
 #          \"decode_beamsize\": 200, \"decode_top_cand_n\": 5, \"decode_top_p\": 0.9, \
 #          \"decode_max_beam_per_length\": 10, \"decode_max_batchsize\": 32, \"decode_dedup\": True}" \
-#      --path $cp_path/checkpoint_best.pt > $run_path/test.$data-$input.$slang-$tlang.log 2>&1
+#      --path $cp_path/checkpoint_best.pt \
+#      --remove-bpe --tokenizer moses --sacrebleu --scoring sacrebleu \
+#      > $run_path/test-beamsearch.$data-$input.$slang-$tlang.log 2>&1
 
 else
   echo Unknown mode ${mode}.
