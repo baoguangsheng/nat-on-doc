@@ -279,6 +279,7 @@ class GTransGlatDecomposedLink(NAGTransformerModel):
 
 
     def initialize_output_tokens_with_length(self, src_tokens, length_tgt):
+        max_srclen = src_tokens.ne(self.tgt_dict.pad_index).sum(-1).max()
         max_length = length_tgt.max()
         idx_length = utils.new_arange(src_tokens, max_length)
 
@@ -290,10 +291,11 @@ class GTransGlatDecomposedLink(NAGTransformerModel):
         )
 
         # Guangsheng Bao: set <s> and </s> in tgt corresponding to src
+        upsample_scale = round(max_length.item() / max_srclen.item())
         idx_src = utils.new_arange(src_tokens, src_tokens.size(1))
-        idx_tgt = (src_tokens == self.bos) * (idx_src.unsqueeze(0) * 2)
+        idx_tgt = (src_tokens == self.bos) * (idx_src.unsqueeze(0) * upsample_scale)
         initial_output_tokens.scatter_(1, idx_tgt, self.bos)
-        idx_tgt = (src_tokens == self.eos) * (idx_src.unsqueeze(0) * 2 + 1)
+        idx_tgt = (src_tokens == self.eos) * (idx_src.unsqueeze(0) * upsample_scale + 1)
         initial_output_tokens.scatter_(1, idx_tgt, self.eos)
 
         initial_output_tokens[:, 0] = self.bos

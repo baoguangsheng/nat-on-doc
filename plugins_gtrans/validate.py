@@ -132,7 +132,7 @@ def main(cfg: DictConfig, override_args=None):
             target_tokens = utils.strip_pad(sample['target'][0], tgt_dict.pad()).int().cpu()
             src_str = src_dict.string(src_tokens, cfg.common_eval.post_process)
             target_str = tgt_dict.string(target_tokens, cfg.common_eval.post_process)
-            res_samples.append((sample['id'][0].item(), src_str, target_str, log_output['ctc_loss'].item()))
+            res_samples.append((sample['id'][0].item(), src_str, target_str, log_output['loss'].item()))
 
         if data_parallel_world_size > 1:
             log_outputs = distributed_utils.all_gather_list(

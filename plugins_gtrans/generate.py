@@ -33,8 +33,8 @@ logging.basicConfig(
 logger = logging.getLogger("fairseq_cli.generate")
 
 def remove_seps(text):
-    sents = [s.strip() for s in text.replace('<s>', '').split('</s>')]
-    sents = [s for s in sents if len(s) > 0]
+    sents = text.split('</s> <s>')
+    sents = [s.replace('<s>', '').replace('</s>', '').strip() for s in sents]
     return sents
 
 def string_seps(dict, tensor):
