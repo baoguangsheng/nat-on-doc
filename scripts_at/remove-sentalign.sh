@@ -32,7 +32,7 @@ src_bin_path=$src_path/$data-$input.binarized.$slang-$tlang
 seg_path=$exp_path/$data-$input.segmented.$slang-$tlang
 bin_path=$exp_path/$data-$input.binarized.$slang-$tlang
 
-mkdir $seg_path $bin_path
+mkdir -p $exp_path $seg_path $bin_path
 
 echo `date`, Generate segmented files ...
 # filter out <s> and </s>
