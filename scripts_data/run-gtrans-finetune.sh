@@ -17,13 +17,13 @@ exp_path=$cur_dir/$exp_path
 cd ./G-Trans
 
 if [ $mode == "data" ]; then
-  bash exp_gtrans/prepare-finetune.sh $data $exp_path
+  bash -e exp_gtrans/prepare-finetune.sh $data $exp_path
 
 elif [ $mode == "train" ]; then
-  bash exp_gtrans/run-finetune.sh $data train $exp_path
+  bash -e exp_gtrans/run-finetune.sh $data train $exp_path
 
 elif [ $mode == "test" ]; then
-  bash exp_gtrans/run-finetune.sh $data test $exp_path
+  bash -e exp_gtrans/run-finetune.sh $data test $exp_path
 
 else
   echo Unknown mode ${mode}.
