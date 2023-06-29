@@ -36,8 +36,8 @@ bash -e scripts_data/prepare-kd-data.sh $data $from_exp_path $exp_path $input
 # 4. Remove sentence separator for none G-Trans models
 from_exp_path=$exp_root/exp_raw
 exp_path=$exp_root/exp_raw_nosep
-bash -e scripts_at/remove-sentseparator.sh $data $from_exp_path $exp_path $input
+bash -e scripts_data/remove-sentseparator.sh $data $from_exp_path $exp_path $input
 
 from_exp_path=$exp_root/exp_kd
 exp_path=$exp_root/exp_kd_noseq
-bash -e scripts_at/remove-sentseparator.sh $data $from_exp_path $exp_path $input
+bash -e scripts_data/remove-sentseparator.sh $data $from_exp_path $exp_path $input

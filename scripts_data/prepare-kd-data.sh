@@ -32,6 +32,7 @@ else
   mode=partial
 fi
 
+echo `date`, Preparing knowledge-distilled data ...
 echo `date`, data: $data, mode: $mode, exp_path: $src_path, slang: $slang, tlang: $tlang
 bin_path=$src_path/$data-$input.binarized.$slang-$tlang
 
@@ -57,11 +58,11 @@ src_res_path=$src_path/run-finetune/$data-$input.results.$slang-$tlang
 
 seg_path=$exp_path/$data-$input.segmented.$slang-$tlang
 bin_path=$exp_path/$data-$input.binarized.$slang-$tlang
-mkdir $seg_path $bin_path
+mkdir -p $exp_path $seg_path $bin_path
 
 echo `date`, Generate segmented files ...
 # use generated target for train, but original target for test and valid
-cp $src_seg_path/* $seg_path/. -f
+cp $src_seg_path/* $seg_path/. -rf
 for D in train; do
   echo `date`, $D
   cp $src_seg_path/$D.$slang $seg_path/$D.$slang
