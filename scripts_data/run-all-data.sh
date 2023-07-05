@@ -39,5 +39,5 @@ exp_path=$exp_root/exp_raw_nosep
 bash -e scripts_data/remove-sentseparator.sh $data $from_exp_path $exp_path $input
 
 from_exp_path=$exp_root/exp_kd
-exp_path=$exp_root/exp_kd_noseq
+exp_path=$exp_root/exp_kd_nosep
 bash -e scripts_data/remove-sentseparator.sh $data $from_exp_path $exp_path $input
