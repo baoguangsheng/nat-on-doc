@@ -7,26 +7,32 @@
 # command help
 if [ $# == '0' ]; then
     echo "Please follow the usage:"
-    echo "    bash $0 iwslt17 exp_test doc"
+    echo "    bash $0 iwslt17 from_exp_test exp_test doc"
     exit
 fi
 
 # run command
 data=$1
-exp_path=$2
-input=$3  # doc, sent
+src_path=$2
+exp_path=$3
+input=$4  # doc, sent
 
 slang=en
 tlang=de
 
 # switch to submodule and convert the relative path to absolute
 cur_dir=$(pwd)
+src_path=$cur_dir/$src_path
 exp_path=$cur_dir/$exp_path
 cd ./G-Trans
 
 echo `date`, data: $data, exp_path: $exp_path, slang: $slang, tlang: $tlang
 seg_path=$exp_path/$data-$input.segmented.$slang-$tlang
 bin_path=$exp_path/$data-$input.binarized.$slang-$tlang
+
+mkdir -p $exp_path
+rm $exp_path/* -rf
+cp $src_path/$data-$input.* $exp_path/. -rf
 
 echo `date`, Filter invalid data which target_len / source_len > 2.0 ...
 python ../scripts_at/filter_data.py --data-path $seg_path --slang $slang --tlang $tlang

@@ -41,3 +41,14 @@ bash -e scripts_data/remove-sentseparator.sh $data $from_exp_path $exp_path $inp
 from_exp_path=$exp_root/exp_kd
 exp_path=$exp_root/exp_kd_nosep
 bash -e scripts_data/remove-sentseparator.sh $data $from_exp_path $exp_path $input
+
+# 5. Filter invalid data for CTC and DAG
+for dt in raw kd; do
+  from_exp_path=$exp_root/exp_${dt}
+  exp_path=$exp_root/exp_${dt}/exp_filtered
+  bash -e scripts_data/filter-data.sh $data $from_exp_path $exp_path $input
+
+  from_exp_path=$exp_root/exp_${dt}_nosep
+  exp_path=$exp_root/exp_${dt}_nosep/exp_filtered
+  bash -e scripts_data/filter-data.sh $data $from_exp_path $exp_path $input
+done

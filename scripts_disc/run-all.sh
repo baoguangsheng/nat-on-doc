@@ -4,11 +4,9 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-umask 002
-#pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-#pip config set global.index-url https://pypi.org/simple
-pip config set global.trusted-host mirrors.aliyun.com
-pip config set global.index-url  http://mirrors.aliyun.com/pypi/simple
+# setup the environment
+set -e  # exit if error
+umask 002  # avoid root privilege in docker
 
 # Experiments for discourse phenomena evaluation: data in $data_path and experiments in $exp_path
 data_path=data-cadec

@@ -7,48 +7,41 @@
 # command help
 if [ $# == '0' ]; then
     echo "Please follow the usage:"
-    echo "    bash $0 iwslt17 raw/kd doc"
+    echo "    bash $0 iwslt17 exp_root raw/kd"
     exit
 fi
 
-umask 002
-#pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple
-#pip config set global.index-url https://pypi.org/simple
-pip config set global.trusted-host mirrors.aliyun.com
-pip config set global.index-url  http://mirrors.aliyun.com/pypi/simple
+# setup the environment
+set -e  # exit if error
+umask 002  # avoid root privilege in docker
 
-# Experiments: sent-align uses data with sentence separator
-#   no_align -> $exp_otheralign_path
-#   token_align -> $exp_otheralign_path
-#   sent_align -> $exp_sentalign_path
 data=$1
-raw_kd=$2
-input=$3
+exp_root=$2
+data_type=$3  # data type
+input=doc
 
-exp_sentalign_path=exp_sentalign_${raw_kd}
-exp_otheralign_path=exp_otheralign_${raw_kd}
-
-
-# 1. Prepare dataset
-# We assume the datasets have been prepared by running the scripts in ./scripts_at.
-
-# 2. Train and evaluate NAT models
+# Setup
 bash scripts_nat/setup-glat.sh
 
-# no_align
-bash scripts_nat/no_align/run-nat.sh $data train $exp_otheralign_path $input
-bash scripts_nat/no_align/run-nat.sh $data test $exp_otheralign_path $input
-bash scripts_nat/no_align/run-glat.sh $data train $exp_otheralign_path $input
-bash scripts_nat/no_align/run-glat.sh $data test $exp_otheralign_path $input
+# implicit alignment
+exp_path=$exp_root/exp_${data_type}_nosep
+bash scripts_nat/run-nat.sh $data train $exp_path $input
+bash scripts_nat/run-nat.sh $data test $exp_path $input
+bash scripts_nat/run-glat.sh $data train $exp_path $input
+bash scripts_nat/run-glat.sh $data test $exp_path $input
 
-# token_align
-bash scripts_nat/token_align/run-nat-ctc.sh $data train $exp_otheralign_path $input
-bash scripts_nat/token_align/run-nat-ctc.sh $data test $exp_otheralign_path $input
-bash scripts_nat/token_align/run-glat-ctc.sh $data train $exp_otheralign_path $input
-bash scripts_nat/token_align/run-glat-ctc.sh $data test $exp_otheralign_path $input
+# token-level alignment
+exp_path=$exp_root/exp_${data_type}_nosep/exp_filtered
+bash scripts_nat/run-nat-ctc.sh $data train $exp_path $input
+bash scripts_nat/run-nat-ctc.sh $data test $exp_path $input
+bash scripts_nat/run-glat-ctc.sh $data train $exp_path $input
+bash scripts_nat/run-glat-ctc.sh $data test $exp_path $input
 
-# sent_align
-bash scripts_nat/sent_align/run-gtrans-glat.sh $data train $exp_sentalign_path $input
-bash scripts_nat/sent_align/run-gtrans-glat.sh $data test $exp_sentalign_path $input
-bash scripts_nat/sent_align/run-gtrans-glat-ctc.sh $data train $exp_sentalign_path $input
-bash scripts_nat/sent_align/run-gtrans-glat-ctc.sh $data test $exp_sentalign_path $input
+# sent-level alignment
+exp_path=$exp_root/exp_${data_type}
+bash scripts_nat/run-gtrans-glat.sh $data train $exp_path $input
+bash scripts_nat/run-gtrans-glat.sh $data test $exp_path $input
+
+exp_path=$exp_root/exp_${data_type}/exp_filtered
+bash scripts_nat/run-gtrans-glat-ctc.sh $data train $exp_path $input
+bash scripts_nat/run-gtrans-glat-ctc.sh $data test $exp_path $input
