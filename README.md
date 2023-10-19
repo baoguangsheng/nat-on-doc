@@ -6,7 +6,9 @@
 ## Brief Intro
 NAT models achieve high acceleration on documents, and sentence alignment significantly enhances their performance. 
 However, current NAT models still have a significant performance gap compared to their AT counterparts. 
-Our investigation shows that NAT models suffer more from the multi-modality and misalignment issues in the context of document-level MT than sentence-level MT.
+Our investigation shows that NAT models suffer more from the multi-modality and misalignment issues in the context of document-level MT than sentence-level MT,
+and current NAT models face challenges on handling document context and discourse phenomena.
+
 
 ## Prepare Raw Data & Knowledge Distilled Data
 ```
