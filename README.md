@@ -40,3 +40,13 @@ Run both AT and NAT models on discourse phenomena testsuite, where the data is s
 ```
 CUDA_VISIBLE_DEVICES=0,1,2,3 bash scripts_disc/run-all.sh
 ```
+
+### Citation
+If you find this work useful, you can cite it with the following BibTex entry:
+
+    @article{bao2023non,
+      title={Non-Autoregressive Document-Level Machine Translation},
+      author={Bao, Guangsheng and Teng, Zhiyang and Zhou, Hao and Yan, Jianhao and Zhang, Yue},
+      journal={arXiv preprint arXiv:2305.12878},
+      year={2023}
+    }
